@@ -69,6 +69,19 @@ export default function WorkList() {
     setThumb(true)
   }, [setThumb])
 
+  // Re-detect what sits under a stationary cursor and re-show the thumbnail.
+  // Used after a scroll settles, where no pointer event will fire on its own.
+  const reArmHover = useCallback(() => {
+    const { x, y } = targetPos.current
+    if (x < 0 || y < 0) return
+    const card = document.elementFromPoint(x, y)?.closest('[data-card]')
+    if (!card) return
+    const project = PROJECTS.find(p => p.id === card.getAttribute('data-card'))
+    if (!project) return
+    setDisplayedProject(project)
+    setThumb(true)
+  }, [setThumb])
+
   const handleCardLeave = useCallback(() => {
     // Short grace period — entering another card within THUMB_GRACE cancels it
     if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
@@ -165,6 +178,9 @@ export default function WorkList() {
       if (Math.abs(dist) < 0.5) {
         el.scrollLeft = target.x
         raf = null
+        // Cards have stopped moving — safe to re-show the thumbnail for
+        // whichever one ended up under the cursor.
+        if (!scrollingRef.current) reArmHover()
         return
       }
       el.scrollLeft += dist * EASE
@@ -183,7 +199,14 @@ export default function WorkList() {
       scrollingRef.current = true
       setThumb(false)
       if (quiet) clearTimeout(quiet)
-      quiet = setTimeout(() => { scrollingRef.current = false }, SCROLL_QUIET)
+      quiet = setTimeout(() => {
+        scrollingRef.current = false
+        // mouseenter only fires when the pointer *crosses* a boundary, and the
+        // pointer hasn't moved — so nothing would re-show the thumbnail even
+        // though a card is sitting right under it. Re-detect manually, but
+        // only if the glide already finished; otherwise tick() handles it.
+        if (raf === null) reArmHover()
+      }, SCROLL_QUIET)
 
       target.x = clamp(target.x + px * WHEEL_SPEED)
       run()
@@ -219,7 +242,7 @@ export default function WorkList() {
       if (settle) clearTimeout(settle)
       if (quiet) clearTimeout(quiet)
     }
-  }, [isMobile, setThumb])
+  }, [isMobile, setThumb, reArmHover])
 
   if (isMobile) return <WorkMobile />
 
@@ -396,7 +419,7 @@ function ProjectCardH({ project, index, onEnter, onLeave }: {
 
   return (
     <div
-      data-card
+      data-card={project.id}
       className="no-hover-outline"
       role="button"
       tabIndex={0}
