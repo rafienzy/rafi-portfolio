@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { PROJECTS, Project } from '@/lib/work-data'
 import { navigateWithTransition } from '@/lib/page-transition'
@@ -27,6 +27,11 @@ const LINE_PX = 16
 // moves and neighbours don't shift.
 const HOVER_SCALE = 1.06
 
+// Cursor thumbnail
+const THUMB_LERP  = 0.1   // follow factor per frame — lower = more lag
+const THUMB_GRACE = 80    // ms before collapsing, so row-to-row swaps stay alive
+const SCROLL_QUIET = 180  // ms after the last wheel tick before hover re-arms
+
 export default function WorkList() {
   // ── Mobile detection ───────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(false)
@@ -38,6 +43,76 @@ export default function WorkList() {
   }, [])
 
   const stripRef = useRef<HTMLDivElement>(null)
+
+  // ── Cursor thumbnail state ─────────────────────────────────────────────
+  // Visibility is decoupled from the hovered card so moving between adjacent
+  // cards swaps the content instead of collapsing → re-springing the card.
+  const [thumbActive,      setThumbActive]      = useState(false)
+  const [displayedProject, setDisplayedProject] = useState<Project | null>(null)
+  const exitTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const thumbActiveRef = useRef(false)
+  // Cards slide under a stationary cursor while the strip scrolls, which fires
+  // enter/leave on every card that passes. Suppress the thumbnail during that.
+  const scrollingRef   = useRef(false)
+
+  const setThumb = useCallback((v: boolean) => {
+    if (thumbActiveRef.current === v) return
+    thumbActiveRef.current = v
+    setThumbActive(v)
+  }, [])
+
+  const handleCardEnter = useCallback((project: Project) => {
+    if (scrollingRef.current) return
+    // Cancel any pending collapse
+    if (exitTimerRef.current) { clearTimeout(exitTimerRef.current); exitTimerRef.current = null }
+    setDisplayedProject(project)   // swap content instantly (card stays at scale 1)
+    setThumb(true)
+  }, [setThumb])
+
+  const handleCardLeave = useCallback(() => {
+    // Short grace period — entering another card within THUMB_GRACE cancels it
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
+    exitTimerRef.current = setTimeout(() => {
+      setThumb(false)
+      exitTimerRef.current = null
+    }, THUMB_GRACE)
+  }, [setThumb])
+
+  useEffect(() => () => {
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
+  }, [])
+
+  // ── Cursor thumbnail — lerp follow for smooth lag effect ──────────────
+  const thumbRef  = useRef<HTMLDivElement>(null)
+  const rafRef    = useRef<number | null>(null)
+  const targetPos = useRef({ x: -400, y: -400 })
+  const curPos    = useRef({ x: -400, y: -400 })
+
+  const onMouseMove = useCallback((e: MouseEvent) => {
+    targetPos.current = { x: e.clientX, y: e.clientY }
+  }, [])
+
+  useEffect(() => {
+    if (isMobile) return
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+
+    function tick() {
+      curPos.current.x = lerp(curPos.current.x, targetPos.current.x, THUMB_LERP)
+      curPos.current.y = lerp(curPos.current.y, targetPos.current.y, THUMB_LERP)
+      if (thumbRef.current) {
+        thumbRef.current.style.left = (curPos.current.x + 28) + 'px'
+        thumbRef.current.style.top  = (curPos.current.y - 90) + 'px'
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+    window.addEventListener('mousemove', onMouseMove)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [isMobile, onMouseMove])
 
   // ── Lock the page's vertical scroll while this view is mounted ─────────
   // Class lives on <html> so it can't be clobbered by body-class toggling
@@ -62,6 +137,7 @@ export default function WorkList() {
     const target = { x: el.scrollLeft }
     let raf: number | null = null
     let settle: ReturnType<typeof setTimeout> | null = null
+    let quiet: ReturnType<typeof setTimeout> | null = null
 
     const maxScroll = () => el.scrollWidth - el.clientWidth
     const clamp = (v: number) => Math.max(0, Math.min(v, maxScroll()))
@@ -102,6 +178,13 @@ export default function WorkList() {
       if (px === 0) return
       e.preventDefault()
 
+      // Hide the cursor thumbnail for the duration of the gesture — cards
+      // sliding past a stationary pointer would otherwise strobe it.
+      scrollingRef.current = true
+      setThumb(false)
+      if (quiet) clearTimeout(quiet)
+      quiet = setTimeout(() => { scrollingRef.current = false }, SCROLL_QUIET)
+
       target.x = clamp(target.x + px * WHEEL_SPEED)
       run()
 
@@ -134,13 +217,15 @@ export default function WorkList() {
       el.removeEventListener('scroll', onScroll)
       if (raf !== null) cancelAnimationFrame(raf)
       if (settle) clearTimeout(settle)
+      if (quiet) clearTimeout(quiet)
     }
-  }, [isMobile])
+  }, [isMobile, setThumb])
 
   if (isMobile) return <WorkMobile />
 
   // ── Horizontal strip ───────────────────────────────────────────────────
   return (
+    <>
     <div style={{
       position: 'relative', zIndex: 10,
       height: '100vh',
@@ -195,7 +280,13 @@ export default function WorkList() {
         }}
       >
         {PROJECTS.map((project, i) => (
-          <ProjectCardH key={project.id} project={project} index={i} />
+          <ProjectCardH
+            key={project.id}
+            project={project}
+            index={i}
+            onEnter={handleCardEnter}
+            onLeave={handleCardLeave}
+          />
         ))}
 
         {/* Trailing spacer — a flex scroll container drops its padding-right in
@@ -203,11 +294,102 @@ export default function WorkList() {
         <div aria-hidden style={{ flex: '0 0 auto', width: H_PAD }} />
       </div>
     </div>
+
+    {/* ── Cursor thumbnail ── */}
+    <div
+      ref={thumbRef}
+      aria-hidden
+      style={{
+        position: 'fixed',
+        zIndex: 99999,
+        pointerEvents: 'none',
+        // Spring up on first hover, stay alive while moving between cards,
+        // collapse only once the cursor truly leaves them all
+        opacity: thumbActive ? 1 : 0,
+        transform: thumbActive ? 'rotate(-3deg) scale(1)' : 'rotate(-3deg) scale(0)',
+        transition: thumbActive
+          ? 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease'
+          : 'transform 0.22s cubic-bezier(0.4, 0, 1, 1), opacity 0.2s ease',
+        transformOrigin: 'left top',
+        // Card shape
+        width: 220,
+        height: 140,
+        borderRadius: 10,
+        overflow: 'hidden',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.55)',
+        // Initial off-screen position
+        left: -300,
+        top: -300,
+        willChange: 'left, top',
+      }}
+    >
+      {displayedProject && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(135deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 100%)',
+          borderTop: `3px solid ${displayedProject.accent}`,
+        }}>
+          {/* Accent glow blob */}
+          <div style={{
+            position: 'absolute', right: -20, top: -20,
+            width: 120, height: 120, borderRadius: '50%',
+            background: displayedProject.accent,
+            opacity: 0.15,
+            filter: 'blur(30px)',
+          }} />
+
+          {/* Content */}
+          <div style={{
+            position: 'absolute', inset: 0, padding: '14px 16px',
+            display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+          }}>
+            <div>
+              <div style={{
+                fontSize: 9, letterSpacing: '2px',
+                color: displayedProject.accent, textTransform: 'uppercase',
+                fontFamily: 'monospace', fontWeight: 700,
+              }}>
+                {displayedProject.tags[0]}
+              </div>
+              <div style={{
+                fontSize: 15, fontWeight: 700, color: '#fff',
+                marginTop: 5, letterSpacing: '-0.02em', lineHeight: 1.2,
+                textTransform: 'uppercase',
+              }}>
+                {displayedProject.title}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{
+                fontSize: 10, color: 'rgba(255,255,255,0.35)',
+                letterSpacing: '1px', fontFamily: 'monospace',
+              }}>
+                {displayedProject.year}
+              </span>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%',
+                background: `${displayedProject.accent}22`,
+                border: `1px solid ${displayedProject.accent}55`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span style={{ fontSize: 12, color: displayedProject.accent }}>↗</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+    </>
   )
 }
 
 // ── Card ─────────────────────────────────────────────────────────────────
-function ProjectCardH({ project, index }: { project: Project; index: number }) {
+function ProjectCardH({ project, index, onEnter, onLeave }: {
+  project: Project
+  index: number
+  onEnter: (p: Project) => void
+  onLeave: () => void
+}) {
   const [hovered, setHovered] = useState(false)
 
   const go = () => navigateWithTransition(`/work/${project.id}`)
@@ -223,8 +405,8 @@ function ProjectCardH({ project, index }: { project: Project; index: number }) {
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go() }
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => { setHovered(true); onEnter(project) }}
+      onMouseLeave={() => { setHovered(false); onLeave() }}
       style={{
         flex: '0 0 auto',
         width: CARD_W,
