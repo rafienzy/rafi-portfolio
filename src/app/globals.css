@@ -26,6 +26,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Pages that scroll horizontally instead of vertically opt in via this class.
+   Toggled from the component so it never leaks to other routes. */
+html.lock-vscroll,
+html.lock-vscroll body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Horizontal scroll strips — hide the native scrollbar, keep scrolling */
+.no-scrollbar {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* legacy Edge */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;                  /* WebKit */
+}
+
 /* Hide native cursor only on home page where custom cursor is active */
 body.custom-cursor,
 body.custom-cursor * {
@@ -48,5 +66,11 @@ body.custom-cursor * {
   [role="button"]:hover,
   .draggable:hover {
     outline-color: rgba(92, 255, 133, 0.55);
+  }
+
+  /* Opt-out for elements that carry their own hover treatment */
+  .no-hover-outline,
+  .no-hover-outline:hover {
+    outline-color: transparent;
   }
 }
