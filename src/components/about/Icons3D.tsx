@@ -14,6 +14,11 @@ const BEVEL   = 0.045  // rounded edge where face meets side
 const IDLE    = 0.22   // idle bob amplitude, in design px per tile
 const FRICTION = 0.94  // spin decay after release; higher = longer coast
 
+// Resting motion, running whether or not the tiles can be grabbed.
+const SPIN       = 0.5   // radians/sec of continuous Y rotation
+const SWAY       = 0.18  // radians of X tilt at the extremes
+const SWAY_SPEED = 0.7   // how fast the tilt oscillates
+
 // Rather than extrude the SVG's own paths — which puts the glyph and its
 // backing plate at the same depth and z-fights — we extrude a clean rounded
 // square for the body and paint the icon onto its face as a texture. That also
@@ -34,31 +39,31 @@ function roundedSquare(size: number, radius: number) {
   return s
 }
 
-// Rasterise the SVG once into a canvas texture. Drawing at a fixed 512 keeps
-// the face crisp when a tile scales up, which loading the SVG straight into
-// TextureLoader would not guarantee.
+// Load the SVG straight into a texture. An earlier version rasterised it into
+// a <canvas> first for sharpness, but that made the upload a canvas read —
+// which Brave's fingerprinting protection interferes with, so every tile came
+// out blank and fell back to its flat colour. Handing WebGL the image element
+// avoids the canvas entirely.
 function useIconTexture(src: string) {
   const [tex, setTex] = useState<THREE.Texture | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    let made: THREE.CanvasTexture | null = null
+    let made: THREE.Texture | null = null
 
-    const img = new window.Image()
-    img.onload = () => {
-      if (cancelled) return
-      const S = 512
-      const c = document.createElement('canvas')
-      c.width = c.height = S
-      const ctx = c.getContext('2d')
-      if (!ctx) return
-      ctx.drawImage(img, 0, 0, S, S)
-      made = new THREE.CanvasTexture(c)
-      made.colorSpace = THREE.SRGBColorSpace
-      made.anisotropy = 8
-      setTex(made)
-    }
-    img.src = src
+    const loader = new THREE.TextureLoader()
+    loader.load(
+      src,
+      t => {
+        if (cancelled) { t.dispose(); return }
+        t.colorSpace = THREE.SRGBColorSpace
+        t.anisotropy = 8
+        made = t
+        setTex(t)
+      },
+      undefined,
+      () => { /* leave tex null — the flat colour fallback stands in */ },
+    )
 
     return () => {
       cancelled = true
@@ -69,7 +74,7 @@ function useIconTexture(src: string) {
   return tex
 }
 
-function IconTile({ tile, scale }: { tile: Tile; scale: number }) {
+function IconTile({ tile, interactive }: { tile: Tile; interactive: boolean }) {
   const mesh = useRef<THREE.Mesh>(null)
   const tex  = useIconTexture(tile.src)
 
@@ -103,9 +108,16 @@ function IconTile({ tile, scale }: { tile: Tile; scale: number }) {
     const sx = bb.max.x - bb.min.x
     const sy = bb.max.y - bb.min.y
     const pos = geo.attributes.position
+    const nrm = geo.attributes.normal
     const uv  = geo.attributes.uv
     for (let i = 0; i < pos.count; i++) {
-      uv.setXY(i, (pos.getX(i) - bb.min.x) / sx, (pos.getY(i) - bb.min.y) / sy)
+      const u = (pos.getX(i) - bb.min.x) / sx
+      const v = (pos.getY(i) - bb.min.y) / sy
+      // Both caps sit in the same material group, so the back would show the
+      // artwork mirrored once a tile turns past 90° — "Ai" reading as "iA".
+      // Flipping U on back-facing vertices makes it read correctly from either
+      // side, like a card printed on both faces.
+      uv.setXY(i, nrm.getZ(i) < -0.5 ? 1 - u : u, v)
     }
     uv.needsUpdate = true
 
@@ -123,24 +135,28 @@ function IconTile({ tile, scale }: { tile: Tile; scale: number }) {
     const m = mesh.current
     if (!m) return
 
-    if (!dragging.current) {
-      // Coast, then settle back to the angle the design specifies
+    const t = state.clock.elapsedTime
+
+    if (dragging.current) {
+      // The pointer owns the rotation outright while held
+    } else if (Math.abs(vel.current.x) > 0.0004 || Math.abs(vel.current.y) > 0.0004) {
+      // Coast on the throw, decaying back toward the resting motion
       m.rotation.y += vel.current.x
       m.rotation.x += vel.current.y
       vel.current.x *= FRICTION
       vel.current.y *= FRICTION
-
-      if (Math.abs(vel.current.x) < 0.0004 && Math.abs(vel.current.y) < 0.0004) {
-        vel.current.x = 0
-        vel.current.y = 0
-        m.rotation.x += (0 - m.rotation.x) * 0.05
-        m.rotation.y += (0 - m.rotation.y) * 0.05
-      }
+    } else {
+      // Resting state: a slow continuous turn with a sway across it. Tracked
+      // against elapsed time rather than accumulated so a throw can't leave
+      // the tile permanently out of phase with its neighbours.
+      vel.current.x = 0
+      vel.current.y = 0
+      m.rotation.y = t * SPIN + phase
+      m.rotation.x = Math.sin(t * SWAY_SPEED + phase) * SWAY
     }
 
     m.rotation.z = restZ
-    // Gentle idle drift so the tiles aren't dead before you touch them
-    const t = state.clock.elapsedTime
+    // Gentle positional drift so the group never looks pinned
     m.position.y = cy + Math.sin(t * 0.7 + phase) * (IDLE * 8)
     m.position.x = cx + Math.cos(t * 0.5 + phase) * (IDLE * 5)
 
@@ -173,18 +189,25 @@ function IconTile({ tile, scale }: { tile: Tile; scale: number }) {
     dragging.current = false
   }
 
+  // Look-only mode attaches no handlers at all, so R3F skips raycasting these
+  // meshes entirely rather than just ignoring the results.
+  const handlers = interactive
+    ? {
+        onPointerDown: onDown,
+        onPointerMove: onMove,
+        onPointerUp: onUp,
+        onPointerCancel: onUp,
+        onPointerOver: () => setHovered(true),
+        onPointerOut: () => setHovered(false),
+      }
+    : {}
+
   return (
     <mesh
       ref={mesh}
       geometry={geometry}
       position={[cx, cy, 0]}
-      scale={scale === 0 ? 0.001 : 1}
-      onPointerDown={onDown}
-      onPointerMove={onMove}
-      onPointerUp={onUp}
-      onPointerCancel={onUp}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
+      {...handlers}
     >
       {/* Group 0 = the two flat caps, group 1 = extruded sides and bevel */}
       <meshStandardMaterial attach="material-0" map={tex ?? undefined} roughness={0.35} metalness={0.05} color={tex ? '#ffffff' : '#d9d9d9'} />
@@ -229,7 +252,7 @@ function useCanvasSizeKick(ready: boolean, host: React.RefObject<HTMLDivElement 
 
 // Design space is 1440 wide; the canvas is whatever the stage is. Scaling the
 // whole group by that ratio lets every tile stay in design pixels.
-function Scene() {
+function Scene({ interactive }: { interactive: boolean }) {
   const { size } = useThree()
   const scale = size.width / DESIGN_W
 
@@ -239,13 +262,13 @@ function Scene() {
       <directionalLight position={[-300, 400, 600]} intensity={2.2} />
       <directionalLight position={[400, -200, 300]} intensity={0.8} color="#9effc0" />
       {TILES.map(t => (
-        <IconTile key={t.label} tile={t} scale={1} />
+        <IconTile key={t.label} tile={t} interactive={interactive} />
       ))}
     </group>
   )
 }
 
-export default function Icons3D() {
+export default function Icons3D({ interactive = false }: { interactive?: boolean }) {
   const host = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
 
@@ -270,7 +293,14 @@ export default function Icons3D() {
   useCanvasSizeKick(ready, host)
 
   return (
-    <div ref={host} style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
+    <div
+      ref={host}
+      style={{
+        position: 'absolute', inset: 0, zIndex: 3,
+        // Look-only: let clicks and text selection pass straight through
+        pointerEvents: interactive ? 'auto' : 'none',
+      }}
+    >
       {!ready && <FlatTiles />}
       {ready && (
       <Canvas
@@ -286,7 +316,7 @@ export default function Icons3D() {
         resize={{ offsetSize: true, debounce: 0 }}
         style={{ background: 'transparent' }}
       >
-        <Scene />
+        <Scene interactive={interactive} />
       </Canvas>
       )}
     </div>
