@@ -24,9 +24,12 @@ const SNAP_TO_CARD = true // set false to let it rest wherever the gesture ended
 // A wheel event reporting deltaMode 1 is measured in lines, not pixels
 const LINE_PX = 16
 
-// Hover: the media scales up inside a fixed frame, so the card itself never
-// moves and neighbours don't shift.
-const HOVER_SCALE = 1.06
+// Hover. The whole card grows via transform — never via width/height, which
+// would reflow every card after it and shift the scroll position mid-hover.
+// The media then scales a little further inside its frame, so the image keeps
+// creeping past the card's own growth rather than moving in lockstep with it.
+const CARD_HOVER_SCALE = 1.04
+const HOVER_SCALE      = 1.06
 
 // Cursor thumbnail
 const THUMB_LERP  = 0.1   // follow factor per frame — lower = more lag
@@ -165,12 +168,15 @@ export default function WorkList() {
       return raw                                           // already pixels
     }
 
-    // Content offset of each card, measured live so it survives resizes
+    // Content offset of each card, measured live so it survives resizes.
+    // Uses offsetLeft rather than getBoundingClientRect because a hovered card
+    // carries a scale transform — a rect would report the visually grown box
+    // and snap ~10px off. offsetLeft is layout-based and transform-immune.
+    // (The strip is position:relative, so it is the cards' offsetParent.)
     const cardOffsets = () => {
-      const base = el.getBoundingClientRect().left - el.scrollLeft
-      const pad  = parseFloat(getComputedStyle(el).paddingLeft) || 0
+      const pad = parseFloat(getComputedStyle(el).paddingLeft) || 0
       return Array.from(el.querySelectorAll<HTMLElement>('[data-card]')).map(
-        c => clamp(c.getBoundingClientRect().left - base - pad)
+        c => clamp(c.offsetLeft - pad)
       )
     }
 
@@ -290,6 +296,9 @@ export default function WorkList() {
         ref={stripRef}
         className="no-scrollbar"
         style={{
+          // position:relative makes the strip the cards' offsetParent, which is
+          // what cardOffsets() measures against
+          position: 'relative',
           display: 'flex',
           gap: GAP,
           overflowX: 'auto',
@@ -435,6 +444,13 @@ function ProjectCardH({ project, index, onEnter, onLeave }: {
         flex: '0 0 auto',
         width: CARD_W,
         cursor: 'pointer',
+        // Lift the hovered card above its neighbours so the growth overlaps
+        // them cleanly instead of being clipped behind the next one
+        position: 'relative',
+        zIndex: hovered ? 2 : 1,
+        transform: hovered ? `scale(${CARD_HOVER_SCALE})` : 'scale(1)',
+        transition: 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
+        willChange: 'transform',
       }}
     >
       {/* Media */}
