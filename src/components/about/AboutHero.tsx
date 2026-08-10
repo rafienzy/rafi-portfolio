@@ -2,124 +2,154 @@
 
 import Image from 'next/image'
 
-// ── Tuning ───────────────────────────────────────────────────────────────
-// Set this to your cutout once it's in public/ — a PNG or WebP with a
-// transparent background. While it's null you get the placeholder silhouette.
-const PHOTO: string | null = null
+// Built to Figma node 24:127, a 1440×1024 frame.
+//
+// Every position and size below is that frame's value converted to a
+// proportion of it: percentages for placement, `cqw` for anything that needs
+// to scale (type, tile sizes, radii). The stage declares `container-type:
+// inline-size`, so 1cqw == 1% of the stage width and the whole composition
+// scales as one piece instead of drifting apart at other viewport widths.
+//
+//   px → %   : px / 1440 (horizontal), px / 1024 (vertical)
+//   px → cqw : px / 1440 * 100
+const W = 1440
+const H = 1024
+const pctW = (px: number) => `${(px / W) * 100}%`
+const pctH = (px: number) => `${(px / H) * 100}%`
+const cqw  = (px: number) => `${(px / W) * 100}cqw`
 
-const HEADLINE = 'RAFI'
+const PHOTO = '/rafi-photo.webp'
 
-// Where the front copy of the headline starts being visible, measured from the
-// top of the text block. Everything above this line is clipped away, so the
-// letters read as passing behind your head and in front of your body.
-// Raise it to bury more of the type; lower it to bring more forward.
-const FRONT_CLIP = '58%'
-
-// Height of the cutout. The type is sized off the viewport, so these two want
-// adjusting together.
-const PHOTO_H = 'min(72vh, 620px)'
-
-const TYPE: React.CSSProperties = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  margin: 0,
-  fontSize: 'clamp(72px, 17vw, 300px)',
-  fontWeight: 800,
-  letterSpacing: '-0.05em',
-  lineHeight: 0.85,
-  whiteSpace: 'nowrap',
-  userSelect: 'none',
-  pointerEvents: 'none',
-}
+// The four tiles from the design. `box` is the rotated element's bounding box,
+// `size` the square inside it — Figma centres the square in that box, so both
+// are needed to land the tile where it was drawn.
+const TILES = [
+  { src: '/icon-figma.svg', label: 'Figma',         left: 184,     top: 405,    box: 134.122, size: 106,     radius: 8,  rot: -18.47 },
+  { src: '/icon-ps.svg',    label: 'Photoshop',     left: 1057.21, top: 492.21, box: 129.7,   size: 106,     radius: 8,  rot: 14.91 },
+  { src: '/icon-ai.svg',    label: 'Illustrator',   left: 1121,    top: 635,    box: 168.042, size: 136.261, radius: 8,  rot: -15.7 },
+  { src: '/icon-ae.svg',    label: 'After Effects', left: 131.88,  top: 695.88, box: 195.849, size: 162.504, radius: 13, rot: 13.45 },
+]
 
 export default function AboutHero() {
   return (
-    <section
-      style={{
-        position: 'relative', zIndex: 10,
-        minHeight: '100vh',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '120px 24px 80px',
-        overflow: 'hidden',
-      }}
-    >
-      {/* The stage — all three layers share this box so the two copies of the
-          headline stay pixel-aligned with each other. */}
-      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+    <>
+      {/* PORTFOLIO — sits with the nav, which is fixed at real pixel sizes, so
+          this stays unscaled to keep the two aligned at any viewport width */}
+      <div
+        style={{
+          position: 'absolute', top: 115, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 20,
+          fontSize: 14, fontWeight: 700, letterSpacing: '4.06px',
+          color: '#fff', whiteSpace: 'nowrap',
+        }}
+      >
+        PORTFOLIO
+      </div>
 
-        {/* ── 1. Headline, behind ── */}
-        <h1 style={{ ...TYPE, zIndex: 1, color: '#fff' }}>
-          {HEADLINE}
-        </h1>
-
-        {/* ── 2. Cutout ── */}
-        <div style={{ position: 'relative', zIndex: 2, height: PHOTO_H }}>
-          {PHOTO ? (
-            <Image
-              src={PHOTO}
-              alt="Rafi"
-              width={900}
-              height={1200}
-              priority
-              style={{ height: '100%', width: 'auto', objectFit: 'contain' }}
-            />
-          ) : (
-            <PlaceholderFigure />
-          )}
-        </div>
-
-        {/* ── 3. Headline again, in front — clipped to its lower portion ──
-            aria-hidden because it's the same word as the h1 above; without it
-            a screen reader announces the name twice. */}
+      <div
+        style={{
+          position: 'relative', zIndex: 10,
+          width: '100%', maxWidth: W, margin: '0 auto',
+          aspectRatio: `${W} / ${H}`,
+          containerType: 'inline-size',
+        }}
+      >
+        {/* ── White stadium, behind everything ── */}
         <div
-          aria-hidden
           style={{
-            ...TYPE,
-            zIndex: 3,
+            position: 'absolute',
+            left: '50%', transform: 'translateX(-50%)',
+            top: pctH(600),
+            width: pctW(996), height: pctH(264),
+            background: '#fff',
+            borderRadius: cqw(132),
+            zIndex: 1,
+          }}
+        />
+
+        {/* ── Name, left ── */}
+        <div
+          style={{
+            position: 'absolute',
+            left: pctW(222), top: pctH(230),
+            width: pctW(348),
+            zIndex: 2,
+            fontSize: cqw(68), fontWeight: 700,
+            letterSpacing: cqw(-2.04), lineHeight: 1,
             color: '#fff',
-            clipPath: `inset(${FRONT_CLIP} 0 0 0)`,
           }}
         >
-          {HEADLINE}
+          <h1 style={{ margin: 0, fontSize: 'inherit', fontWeight: 'inherit', letterSpacing: 'inherit' }}>
+            RAFI<br />ABDILLAH
+          </h1>
+        </div>
+
+        {/* ── Role, right ── */}
+        <div
+          style={{
+            position: 'absolute',
+            left: pctW(870), top: pctH(356),
+            width: pctW(348),
+            zIndex: 2,
+            fontSize: cqw(50), fontWeight: 700,
+            letterSpacing: cqw(-1.5), lineHeight: 1,
+            color: '#fff', textAlign: 'right',
+          }}
+        >
+          GRAPHIC<br />DESIGNER
+        </div>
+
+        {/* ── Tiles ── */}
+        {TILES.map(({ src, label, left, top, box, size, radius, rot }) => (
+          <div
+            key={label}
+            style={{
+              position: 'absolute',
+              left: pctW(left), top: pctH(top),
+              width: cqw(box), height: cqw(box),
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 3,
+            }}
+          >
+            <div
+              style={{
+                width: cqw(size), height: cqw(size),
+                transform: `rotate(${rot}deg)`,
+                borderRadius: cqw(radius),
+                overflow: 'hidden',
+                flex: 'none',
+              }}
+            >
+              <Image
+                src={src}
+                alt={label}
+                width={250}
+                height={250}
+                style={{ width: '100%', height: '100%', display: 'block' }}
+              />
+            </div>
+          </div>
+        ))}
+
+        {/* ── Cutout, in front of the stadium and tiles ── */}
+        <div
+          style={{
+            position: 'absolute',
+            left: pctW(359), top: pctH(194),
+            width: pctW(684), height: pctH(670),
+            zIndex: 4,
+          }}
+        >
+          <Image
+            src={PHOTO}
+            alt="Rafi Abdillah"
+            width={1386}
+            height={1356}
+            priority
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          />
         </div>
       </div>
-    </section>
-  )
-}
-
-// Stand-in until the real cutout lands. Deliberately plain — it exists to show
-// where the figure sits and how the type wraps around it, nothing more.
-function PlaceholderFigure() {
-  return (
-    <svg
-      viewBox="0 0 300 400"
-      style={{ height: '100%', width: 'auto', display: 'block' }}
-      role="img"
-      aria-label="Placeholder figure"
-    >
-      <defs>
-        <linearGradient id="ph-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="rgba(255,255,255,0.22)" />
-          <stop offset="100%" stopColor="rgba(255,255,255,0.08)" />
-        </linearGradient>
-      </defs>
-      {/* head */}
-      <circle cx="150" cy="96" r="62" fill="url(#ph-fill)" />
-      {/* shoulders / torso */}
-      <path
-        d="M150 172c-62 0-108 40-118 96-6 33-9 76-9 132h254c0-56-3-99-9-132-10-56-56-96-118-96z"
-        fill="url(#ph-fill)"
-      />
-      <text
-        x="150" y="330"
-        textAnchor="middle"
-        fill="rgba(255,255,255,0.35)"
-        style={{ fontSize: 13, letterSpacing: 3, fontFamily: 'monospace' }}
-      >
-        PLACEHOLDER
-      </text>
-    </svg>
+    </>
   )
 }
