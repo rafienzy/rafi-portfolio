@@ -28,9 +28,12 @@ export default function ProjectDetail({ project }: { project: Project }) {
     <div className="flex flex-col md:flex-row w-full">
 
       {/* ══ RAIL — fixed in place on desktop, stacked on mobile ══ */}
+      {/* Top padding clears the fixed nav: the desktop pill runs 57→123px, so
+          200 leaves a real gap rather than tucking the title under its edge.
+          Mobile's nav is shorter, so it gets less. */}
       <aside
-        className="w-full md:w-[32%] md:sticky md:top-0 md:h-screen md:shrink-0 flex flex-col"
-        style={{ padding: '120px 40px 40px' }}
+        className="w-full md:w-[32%] md:sticky md:top-0 md:h-screen md:shrink-0
+                   flex flex-col px-6 md:px-10 pt-[136px] md:pt-[200px] pb-10"
       >
         <div className="md:max-w-[420px] flex flex-col h-full">
 
@@ -118,9 +121,12 @@ export default function ProjectDetail({ project }: { project: Project }) {
       </aside>
 
       {/* ══ MEDIA COLUMN — scrolls with the page ══ */}
+      {/* On desktop this matches the rail so the two columns start level. When
+          they stack on mobile the rail has already cleared the nav, so this
+          only needs enough to separate it from the copy above. */}
       <div
-        className="w-full md:grow"
-        style={{ padding: '120px 40px 160px', minWidth: 0 }}
+        className="w-full md:grow px-6 md:px-10 pt-0 md:pt-[200px] pb-[120px] md:pb-[160px]"
+        style={{ minWidth: 0 }}
       >
         {/* Media is decoupled from the rail tabs now — the tabs tell a story in
             three parts, while this is simply every asset for the project in
