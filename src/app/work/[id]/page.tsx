@@ -3,7 +3,7 @@
 import { use } from 'react'
 import { notFound } from 'next/navigation'
 import Nav from '@/components/layout/Nav'
-import ProjectCanvas from '@/components/work/ProjectCanvas'
+import ProjectDetail from '@/components/work/ProjectDetail'
 import ProjectQuickNav from '@/components/work/ProjectQuickNav'
 import { PROJECTS } from '@/lib/work-data'
 import { navigateWithTransition } from '@/lib/page-transition'
@@ -50,7 +50,7 @@ export default function WorkDetail({ params }: Props) {
       </button>
 
       <div style={{ position: 'relative', zIndex: 10 }}>
-        <ProjectCanvas project={project} />
+        <ProjectDetail project={project} />
       </div>
 
       {/* Quick navigation between projects */}
