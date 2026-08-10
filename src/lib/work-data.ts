@@ -6,6 +6,8 @@
 //   { src: 'demo.mp4', poster: 'demo-poster.webp' }
 export type Media = string | { src: string; poster?: string }
 
+// One narrative section in the detail rail. These are the tabs — they carry the
+// story, not the service taxonomy (that's what `tags` is for).
 export type Frame = {
   name: string
   body?: string
@@ -16,11 +18,39 @@ export type Project = {
   id: string
   title: string
   year: string
-  tags: string[]
+  tags: string[]      // category pills, shown at the foot of the detail rail
   accent: string      // card top-strip / thumbnail accent colour
   thumbnail?: Media   // optional preview image or video for the work-list card
-  frames: Frame[]
+  media?: Media[]     // the scrolling column on the detail page
+  frames: Frame[]     // rail tabs: the challenge / approach / outcome
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// PLACEHOLDER COPY — replace per project.
+// Each section answers something the category pills cannot. Keep them
+// specific: the constraint you were under, the decision you made and why,
+// what actually changed as a result.
+// ─────────────────────────────────────────────────────────────────────────
+const TODO_CHALLENGE =
+  'Placeholder — what made this one hard. The constraint you were working ' +
+  'against, the thing that could have gone wrong, or the tension between what ' +
+  'was asked for and what the format actually allowed. Two or three sentences.'
+
+const TODO_APPROACH =
+  'Placeholder — the decision you made, and why that one over the obvious ' +
+  'alternative. This is the section that shows how you think, so it should ' +
+  'name a real trade-off rather than describe the deliverables.'
+
+const TODO_OUTCOME =
+  'Placeholder — what actually changed. Numbers if you have them: sizes ' +
+  'shipped, turnaround, engagement, how long it stayed in market. A concrete ' +
+  'result beats an adjective every time.'
+
+const narrative = (): Frame[] => [
+  { name: 'The Challenge', body: TODO_CHALLENGE },
+  { name: 'Approach',      body: TODO_APPROACH },
+  { name: 'Outcome',       body: TODO_OUTCOME },
+]
 
 export const PROJECTS: Project[] = [
   {
@@ -29,12 +59,7 @@ export const PROJECTS: Project[] = [
     year: '2024–Now',
     tags: ['Digital Marketing', 'HTML5', 'Graphic Design'],
     accent: '#5CFF85',
-    frames: [
-      { name: 'Overview',     body: 'Design, motion, and digital marketing work at Gomobile Indonesia — spanning HTML5 ad banners, campaign graphics, and brand assets.' },
-      { name: 'Digital Marketing', body: 'Campaign concepts, social creatives, and performance-led visuals across multiple client brands.' },
-      { name: 'HTML5',        body: 'Interactive and animated ad units built in HTML5/CSS/JS for programmatic delivery across GDN and DV360.' },
-      { name: 'Graphic Design', body: 'Key visuals, digital illustrations, and print-ready artwork supporting each campaign.' },
-    ],
+    frames: narrative(),
   },
   {
     id: 'acaii',
@@ -42,12 +67,7 @@ export const PROJECTS: Project[] = [
     year: '2024',
     tags: ['Motion Design', 'E-commerce', 'Graphic Design'],
     accent: '#5CFF85',
-    frames: [
-      { name: 'Overview',     body: 'Brand and storefront work for Acaii Tea & Dessert — from motion teasers to a full e-commerce presence.' },
-      { name: 'Motion Design', body: 'Animated promos, menu reveals, and social motion assets to drive engagement.' },
-      { name: 'E-commerce',   body: 'Online ordering storefront design — product cards, checkout flow, and promo modules.' },
-      { name: 'Graphic Design', body: 'Menu artwork, packaging visuals, and seasonal campaign key visuals.' },
-    ],
+    frames: narrative(),
   },
   {
     id: 'banner-ads',
@@ -55,12 +75,7 @@ export const PROJECTS: Project[] = [
     year: '2024–Now',
     tags: ['Static', 'Motion', 'HTML5'],
     accent: '#5CFF85',
-    frames: [
-      { name: 'Overview',  body: 'A collection of banner advertising work spanning static, motion, and rich-media HTML5 formats.' },
-      { name: 'Static',    body: 'Clean, conversion-focused static banners across all IAB standard sizes.' },
-      { name: 'Motion',    body: 'Animated banner sequences — product reveals, kinetic type, and CTA emphasis.' },
-      { name: 'HTML5',     body: 'Rich-media HTML5 units with click tracking and impression pixels for programmatic delivery.' },
-    ],
+    frames: narrative(),
   },
   {
     id: 'ui-gallery',
@@ -68,11 +83,6 @@ export const PROJECTS: Project[] = [
     year: '2022–2025',
     tags: ['UI/UX', 'HTML+JS', 'UI Design'],
     accent: '#5CFF85',
-    frames: [
-      { name: 'Overview',  body: 'A gallery of UI design explorations — interfaces, components, and interactive prototypes.' },
-      { name: 'UI/UX',     body: 'User flows, wireframes, and high-fidelity screens with a focus on usability.' },
-      { name: 'HTML+JS',   body: 'Selected interfaces built out in HTML/CSS/JS as living, interactive prototypes.' },
-      { name: 'UI Design', body: 'Component libraries, design systems, and polished visual interface work.' },
-    ],
+    frames: narrative(),
   },
 ]

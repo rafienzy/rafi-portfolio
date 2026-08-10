@@ -16,6 +16,9 @@ const MEDIA_RATIO = 16 / 10
 // Switch to 'contain' to letterbox instead — nothing gets cut off, but you get
 // bars around images whose shape doesn't match.
 const MEDIA_FIT: 'cover' | 'contain' = 'cover'
+// Empty media blocks rendered while project.media is still unpopulated, so the
+// column has enough length to scroll against the sticky rail.
+const PLACEHOLDER_COUNT = 5
 
 export default function ProjectDetail({ project }: { project: Project }) {
   const [activeFrame, setActiveFrame] = useState(0)
@@ -48,26 +51,10 @@ export default function ProjectDetail({ project }: { project: Project }) {
             {project.year}
           </div>
 
-          {/* Service list */}
-          <ul style={{ listStyle: 'none', margin: '28px 0 0', padding: 0 }}>
-            {project.tags.map(tag => (
-              <li key={tag} style={{
-                fontSize: 13, lineHeight: 1.9,
-                color: 'rgba(255,255,255,0.45)',
-              }}>
-                <span style={{ color: 'rgba(255,255,255,0.25)', marginRight: 8 }}>·</span>
-                {tag}
-              </li>
-            ))}
-          </ul>
-
-          {/* Spacer pushes the frame section down on tall viewports */}
-          <div className="hidden md:block" style={{ flex: 1, minHeight: 40 }} />
-
-          {/* Frame tabs */}
+          {/* Narrative tabs */}
           <div style={{
             display: 'flex', flexWrap: 'wrap', gap: 20,
-            marginTop: 40, paddingBottom: 4,
+            marginTop: 36, paddingBottom: 4,
           }}>
             {project.frames.map((f, i) => {
               const active = i === activeFrame
@@ -94,16 +81,38 @@ export default function ProjectDetail({ project }: { project: Project }) {
             })}
           </div>
 
-          {/* Active frame body */}
+          {/* Active section body — this is now the rail's main argument, so it
+              carries more size and contrast than a subtitle would */}
           {frame?.body && (
             <p style={{
-              fontSize: 14, lineHeight: 1.75, letterSpacing: '-0.01em',
-              color: 'rgba(255,255,255,0.6)',
+              fontSize: 16, lineHeight: 1.7, letterSpacing: '-0.01em',
+              color: 'rgba(255,255,255,0.78)',
               marginTop: 22, marginBottom: 0,
             }}>
               {frame.body}
             </p>
           )}
+
+          {/* Spacer pins the category pills to the foot of the rail */}
+          <div className="hidden md:block" style={{ flex: 1, minHeight: 40 }} />
+
+          {/* Category pills */}
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 8,
+            marginTop: 36,
+          }}>
+            {project.tags.map(tag => (
+              <span key={tag} style={{
+                fontSize: 11, fontWeight: 600, letterSpacing: '0.5px',
+                color: '#0B3D1E',
+                background: '#5CFF85',
+                padding: '4px 12px', borderRadius: 100,
+                textTransform: 'uppercase', whiteSpace: 'nowrap',
+              }}>
+                {tag}
+              </span>
+            ))}
+          </div>
 
         </div>
       </aside>
@@ -113,41 +122,29 @@ export default function ProjectDetail({ project }: { project: Project }) {
         className="w-full md:grow"
         style={{ padding: '120px 40px 160px', minWidth: 0 }}
       >
-        {project.frames.map((f, i) => (
-          <section
-            key={f.name}
-            style={{ marginBottom: i === project.frames.length - 1 ? 0 : 24 }}
+        {/* Media is decoupled from the rail tabs now — the tabs tell a story in
+            three parts, while this is simply every asset for the project in
+            order. PLACEHOLDER_COUNT empty blocks stand in until project.media
+            is populated. */}
+        {(project.media?.length
+          ? project.media
+          : Array.from({ length: PLACEHOLDER_COUNT }, () => null)
+        ).map((item, i, arr) => (
+          <div
+            key={i}
+            style={{
+              position: 'relative', width: '100%',
+              aspectRatio: String(MEDIA_RATIO),
+              borderRadius: 8, overflow: 'hidden',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              marginBottom: i === arr.length - 1 ? 0 : 16,
+            }}
           >
-            {/* Frame label */}
-            <div style={{
-              fontSize: 10, fontFamily: 'monospace', letterSpacing: '2.5px',
-              textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)',
-              marginBottom: 10,
-            }}>
-              {String(i + 1).padStart(2, '0')} — {f.name}
-            </div>
-
-            {f.images && f.images.length > 0 ? (
-              f.images.map((item, j) => (
-                <div key={j} style={{
-                  position: 'relative', width: '100%',
-                  aspectRatio: String(MEDIA_RATIO),
-                  borderRadius: 8, overflow: 'hidden',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  marginBottom: j === f.images!.length - 1 ? 0 : 16,
-                }}>
-                  <MediaItem item={item} alt={`${project.title} — ${f.name}`} />
-                </div>
-              ))
+            {item ? (
+              <MediaItem item={item} alt={`${project.title} — ${i + 1}`} />
             ) : (
-              /* Placeholder — until frame images land in work-data.ts */
-              <div style={{
-                position: 'relative', width: '100%',
-                aspectRatio: String(MEDIA_RATIO),
-                borderRadius: 8, overflow: 'hidden',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}>
+              <>
                 <div style={{
                   position: 'absolute', inset: 0,
                   background: `linear-gradient(140deg, ${project.accent}14 0%, transparent 60%)`,
@@ -158,11 +155,11 @@ export default function ProjectDetail({ project }: { project: Project }) {
                   fontSize: 10, letterSpacing: '3px', fontFamily: 'monospace',
                   color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase',
                 }}>
-                  Placeholder
+                  Placeholder {String(i + 1).padStart(2, '0')}
                 </div>
-              </div>
+              </>
             )}
-          </section>
+          </div>
         ))}
       </div>
     </div>
