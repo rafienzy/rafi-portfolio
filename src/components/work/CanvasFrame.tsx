@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Frame } from '@/lib/work-data'
+import { toMedia } from '@/lib/media'
 
 interface Props {
   frame: Frame
@@ -82,7 +83,7 @@ export default function CanvasFrame({ frame, index, accentColor, popDelay = 0 }:
         {/* Image placeholders */}
         {frame.images && frame.images.length > 0 && (
           <div style={{ display: 'flex', gap: 16, marginTop: frame.body ? 32 : 0, flexWrap: 'wrap' }}>
-            {frame.images.map((src, i) => (
+            {frame.images.map(toMedia).map(({ src }, i) => (
               <div key={i} style={{
                 width: 260, height: 180,
                 background: 'rgba(255,255,255,0.04)',

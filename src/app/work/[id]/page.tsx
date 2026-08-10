@@ -30,17 +30,21 @@ export default function WorkDetail({ params }: Props) {
 
       <Nav />
 
-      {/* Back button */}
+      {/* Back button — sits directly above the quick-nav pill.
+          ProjectQuickNav is at bottom:28 and stands 50px tall (40px buttons +
+          5px padding each side), so it occupies 28→78px; 90px clears it by 12. */}
       <button
         onClick={() => navigateWithTransition('/work')}
         style={{
-          position: 'fixed', top: 80, left: 20, zIndex: 9999,
+          position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999,
           background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255,255,255,0.14)',
           borderRadius: 100, padding: '7px 18px',
           color: 'rgba(255,255,255,0.8)', cursor: 'pointer',
           fontSize: 12, fontWeight: 600, letterSpacing: '0.04em',
           fontFamily: 'inherit',
+          whiteSpace: 'nowrap',
           transition: 'color 0.15s, border-color 0.15s',
         }}
         onMouseEnter={e => { const el = e.currentTarget; el.style.color = '#fff'; el.style.borderColor = 'rgba(255,255,255,0.4)' }}

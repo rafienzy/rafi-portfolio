@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
-import { PROJECTS, Project } from '@/lib/work-data'
+import { PROJECTS, Project, Media } from '@/lib/work-data'
 import { navigateWithTransition } from '@/lib/page-transition'
-import { isAnimated } from '@/lib/media'
+import { isAnimated, isVideo, toMedia } from '@/lib/media'
 import WorkMobile from './WorkMobile'
 
 // Horizontal strip metrics — single source of truth so the scroll padding and
@@ -448,18 +448,7 @@ function ProjectCardH({ project, index, onEnter, onLeave }: {
         border: '1px solid rgba(255,255,255,0.08)',
       }}>
         {project.thumbnail ? (
-          <Image
-            src={project.thumbnail}
-            alt={project.title}
-            fill
-            sizes="(max-width: 767px) 100vw, 42vw"
-            unoptimized={isAnimated(project.thumbnail)}
-            style={{
-              objectFit: 'cover',
-              transform: hovered ? `scale(${HOVER_SCALE})` : 'scale(1)',
-              transition: 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)',
-            }}
-          />
+          <CardMedia item={project.thumbnail} alt={project.title} hovered={hovered} />
         ) : (
           /* Placeholder — stands in until real thumbnails land in work-data.ts.
              Scales with the same curve as a real image so the hover feel
@@ -533,5 +522,61 @@ function ProjectCardH({ project, index, onEnter, onLeave }: {
         </div>
       </div>
     </div>
+  )
+}
+
+// ── Card media — image, gif or video ─────────────────────────────────────
+function CardMedia({ item, alt, hovered }: { item: Media; alt: string; hovered: boolean }) {
+  const { src, poster } = toMedia(item)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  // Video thumbnails play on hover rather than autoplaying. The strip shows
+  // every card at once, and four looping clips decoding in parallel costs far
+  // more than it earns when only one is being looked at.
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return
+    if (hovered) {
+      v.play().catch(() => {})   // rejects if the browser blocks it; poster stays
+    } else {
+      v.pause()
+      v.currentTime = 0
+    }
+  }, [hovered])
+
+  const zoom = {
+    transform: hovered ? `scale(${HOVER_SCALE})` : 'scale(1)',
+    transition: 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)',
+  }
+
+  if (isVideo(src)) {
+    return (
+      <video
+        ref={videoRef}
+        src={src}
+        poster={poster}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        aria-label={alt}
+        style={{
+          width: '100%', height: '100%',
+          objectFit: 'cover', display: 'block',
+          ...zoom,
+        }}
+      />
+    )
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes="(max-width: 767px) 100vw, 42vw"
+      unoptimized={isAnimated(src)}
+      style={{ objectFit: 'cover', ...zoom }}
+    />
   )
 }

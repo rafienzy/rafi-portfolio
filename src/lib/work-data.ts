@@ -1,7 +1,15 @@
+// A media entry is usually just a path. Use the object form when a video needs
+// a poster frame — iOS Low Power Mode blocks autoplay, and the poster is what
+// gets shown in that case.
+//   'shot.webp'
+//   'demo.mp4'
+//   { src: 'demo.mp4', poster: 'demo-poster.webp' }
+export type Media = string | { src: string; poster?: string }
+
 export type Frame = {
   name: string
   body?: string
-  images?: string[]
+  images?: Media[]   // images, gifs or video — dispatched on file extension
 }
 
 export type Project = {
@@ -10,7 +18,7 @@ export type Project = {
   year: string
   tags: string[]
   accent: string      // card top-strip / thumbnail accent colour
-  thumbnail?: string  // optional preview image path
+  thumbnail?: Media   // optional preview image or video for the work-list card
   frames: Frame[]
 }
 

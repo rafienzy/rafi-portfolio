@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { Project } from '@/lib/work-data'
-import { navigateWithTransition } from '@/lib/page-transition'
-import { isAnimated } from '@/lib/media'
+import { Project, Media } from '@/lib/work-data'
+import { isAnimated, isVideo, toMedia } from '@/lib/media'
 
 // Split layout: a fixed information rail beside a scrolling column of work.
 // The rail is sticky rather than `position: fixed` so it participates in normal
@@ -106,22 +105,6 @@ export default function ProjectDetail({ project }: { project: Project }) {
             </p>
           )}
 
-          {/* Back link */}
-          <button
-            onClick={() => navigateWithTransition('/work')}
-            style={{
-              background: 'none', border: 'none', padding: 0,
-              marginTop: 36, cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: 11, fontWeight: 600, letterSpacing: '2px',
-              textTransform: 'uppercase', textAlign: 'left',
-              color: 'rgba(255,255,255,0.35)',
-              transition: 'color 0.18s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#fff' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.35)' }}
-          >
-            ← Back to work
-          </button>
         </div>
       </aside>
 
@@ -145,7 +128,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
             </div>
 
             {f.images && f.images.length > 0 ? (
-              f.images.map((src, j) => (
+              f.images.map((item, j) => (
                 <div key={j} style={{
                   position: 'relative', width: '100%',
                   aspectRatio: String(MEDIA_RATIO),
@@ -153,14 +136,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
                   border: '1px solid rgba(255,255,255,0.08)',
                   marginBottom: j === f.images!.length - 1 ? 0 : 16,
                 }}>
-                  <Image
-                    src={src}
-                    alt={`${project.title} — ${f.name}`}
-                    fill
-                    sizes="(max-width: 767px) 100vw, 68vw"
-                    unoptimized={isAnimated(src)}
-                    style={{ objectFit: MEDIA_FIT }}
-                  />
+                  <MediaItem item={item} alt={`${project.title} — ${f.name}`} />
                 </div>
               ))
             ) : (
@@ -190,5 +166,66 @@ export default function ProjectDetail({ project }: { project: Project }) {
         ))}
       </div>
     </div>
+  )
+}
+
+// ── Single media slot — image, gif or video ──────────────────────────────
+function MediaItem({ item, alt }: { item: Media; alt: string }) {
+  const { src, poster } = toMedia(item)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  // Only the visible clips play. A detail page can stack several full-width
+  // videos, and decoding them all at once is the expensive part — not the
+  // download, which `preload="metadata"` already keeps small.
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          // Rejects when the browser blocks autoplay (iOS Low Power Mode);
+          // the poster stays up in that case, which is the intended fallback.
+          v.play().catch(() => {})
+        } else {
+          v.pause()
+        }
+      },
+      { threshold: 0.25 },
+    )
+
+    io.observe(v)
+    return () => io.disconnect()
+  }, [])
+
+  if (isVideo(src)) {
+    return (
+      <video
+        ref={videoRef}
+        src={src}
+        poster={poster}
+        // muted + playsInline are both required or iOS refuses to autoplay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        aria-label={alt}
+        style={{
+          width: '100%', height: '100%',
+          objectFit: MEDIA_FIT, display: 'block',
+        }}
+      />
+    )
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes="(max-width: 767px) 100vw, 68vw"
+      unoptimized={isAnimated(src)}
+      style={{ objectFit: MEDIA_FIT }}
+    />
   )
 }
