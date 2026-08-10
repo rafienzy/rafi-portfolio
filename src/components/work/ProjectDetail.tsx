@@ -31,9 +31,14 @@ export default function ProjectDetail({ project }: { project: Project }) {
       {/* Top padding clears the fixed nav: the desktop pill runs 57→123px, so
           200 leaves a real gap rather than tucking the title under its edge.
           Mobile's nav is shorter, so it gets less. */}
+      {/* Horizontal padding matches the nav so content lines up with it:
+          50px on desktop (Nav uses left-[50px]/right-[50px]), 24px on mobile
+          (Nav uses 24px there). Top padding clears the fixed nav — the desktop
+          pill runs 57→123px, so 200 leaves a real gap rather than tucking the
+          title under its edge. */}
       <aside
         className="w-full md:w-[32%] md:sticky md:top-0 md:h-screen md:shrink-0
-                   flex flex-col px-6 md:px-10 pt-[136px] md:pt-[200px] pb-10"
+                   flex flex-col px-6 md:px-[50px] pt-[136px] md:pt-[200px] pb-10"
       >
         <div className="md:max-w-[420px] flex flex-col h-full">
 
@@ -125,7 +130,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
           they stack on mobile the rail has already cleared the nav, so this
           only needs enough to separate it from the copy above. */}
       <div
-        className="w-full md:grow px-6 md:px-10 pt-0 md:pt-[200px] pb-[120px] md:pb-[160px]"
+        className="w-full md:grow px-6 md:px-[50px] pt-0 md:pt-[200px] pb-[120px] md:pb-[160px]"
         style={{ minWidth: 0 }}
       >
         {/* Media is decoupled from the rail tabs now — the tabs tell a story in
