@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { Project } from '@/lib/work-data'
 import { navigateWithTransition } from '@/lib/page-transition'
+import { isAnimated } from '@/lib/media'
 
 // Split layout: a fixed information rail beside a scrolling column of work.
 // The rail is sticky rather than `position: fixed` so it participates in normal
@@ -12,6 +13,10 @@ import { navigateWithTransition } from '@/lib/page-transition'
 // Rail width lives in the Tailwind class below (md:w-[32%]) so it can be
 // desktop-only — the columns stack full-width on mobile.
 const MEDIA_RATIO = 16 / 10
+// 'cover' fills the 16:10 frame and crops anything taller or wider.
+// Switch to 'contain' to letterbox instead — nothing gets cut off, but you get
+// bars around images whose shape doesn't match.
+const MEDIA_FIT: 'cover' | 'contain' = 'cover'
 
 export default function ProjectDetail({ project }: { project: Project }) {
   const [activeFrame, setActiveFrame] = useState(0)
@@ -153,7 +158,8 @@ export default function ProjectDetail({ project }: { project: Project }) {
                     alt={`${project.title} — ${f.name}`}
                     fill
                     sizes="(max-width: 767px) 100vw, 68vw"
-                    style={{ objectFit: 'cover' }}
+                    unoptimized={isAnimated(src)}
+                    style={{ objectFit: MEDIA_FIT }}
                   />
                 </div>
               ))

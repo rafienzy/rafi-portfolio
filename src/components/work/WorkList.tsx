@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { PROJECTS, Project } from '@/lib/work-data'
 import { navigateWithTransition } from '@/lib/page-transition'
+import { isAnimated } from '@/lib/media'
 import WorkMobile from './WorkMobile'
 
 // Horizontal strip metrics — single source of truth so the scroll padding and
@@ -452,6 +453,7 @@ function ProjectCardH({ project, index, onEnter, onLeave }: {
             alt={project.title}
             fill
             sizes="(max-width: 767px) 100vw, 42vw"
+            unoptimized={isAnimated(project.thumbnail)}
             style={{
               objectFit: 'cover',
               transform: hovered ? `scale(${HOVER_SCALE})` : 'scale(1)',
