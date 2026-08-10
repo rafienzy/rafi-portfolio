@@ -9,10 +9,16 @@
   --font-sans: var(--font-bricolage);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Must stay inside @layer base. Unlayered CSS wins over layered CSS in the
+   cascade no matter the specificity, so an unlayered `* { padding: 0 }` beats
+   every Tailwind padding and margin utility — they land in @layer utilities
+   and silently do nothing. Inside base, utilities override it as intended. */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 html {
