@@ -33,19 +33,6 @@ const TILES = [
 export default function AboutHero() {
   return (
     <>
-      {/* PORTFOLIO — sits with the nav, which is fixed at real pixel sizes, so
-          this stays unscaled to keep the two aligned at any viewport width */}
-      <div
-        style={{
-          position: 'absolute', top: 115, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 20,
-          fontSize: 14, fontWeight: 700, letterSpacing: '4.06px',
-          color: '#fff', whiteSpace: 'nowrap',
-        }}
-      >
-        PORTFOLIO
-      </div>
-
       <div
         style={{
           position: 'relative', zIndex: 10,
