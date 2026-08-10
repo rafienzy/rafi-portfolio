@@ -4,7 +4,6 @@ import { use } from 'react'
 import { notFound } from 'next/navigation'
 import Nav from '@/components/layout/Nav'
 import ProjectDetail from '@/components/work/ProjectDetail'
-import ProjectQuickNav from '@/components/work/ProjectQuickNav'
 import { PROJECTS } from '@/lib/work-data'
 import { navigateWithTransition } from '@/lib/page-transition'
 
@@ -30,13 +29,12 @@ export default function WorkDetail({ params }: Props) {
 
       <Nav />
 
-      {/* Back button — sits directly above the quick-nav pill.
-          ProjectQuickNav is at bottom:28 and stands 50px tall (40px buttons +
-          5px padding each side), so it occupies 28→78px; 90px clears it by 12. */}
+      {/* Back button — bottom centre, in the slot the quick-nav pill used to
+          occupy. It's the only fixed control on the page now. */}
       <button
         onClick={() => navigateWithTransition('/work')}
         style={{
-          position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
+          position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
           zIndex: 9999,
           background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255,255,255,0.14)',
@@ -56,9 +54,6 @@ export default function WorkDetail({ params }: Props) {
       <div style={{ position: 'relative', zIndex: 10 }}>
         <ProjectDetail project={project} />
       </div>
-
-      {/* Quick navigation between projects */}
-      <ProjectQuickNav currentId={project.id} />
     </main>
   )
 }
