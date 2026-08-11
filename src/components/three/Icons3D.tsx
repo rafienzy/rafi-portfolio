@@ -22,7 +22,8 @@ export type Tile3D = {
 const DEPTH    = 0.20   // extrusion thickness
 const CORNER   = 0.22   // corner radius — 0.22 gives the smooth squircle
 const BEVEL    = 0.045  // rounded edge where face meets side
-const FRICTION = 0.94   // spin decay after release; higher = longer coast
+const FRICTION = 0.975  // spin decay after release; higher = longer coast
+const THROW    = 2.6    // how much of the drag speed carries into the spin
 
 // Resting motion, running whether or not the tiles can be grabbed.
 const SPIN       = 0.5   // radians/sec of continuous Y rotation
@@ -179,6 +180,13 @@ function IconTile({
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation()
+    // Suppress the compatibility mouse events this pointerdown would otherwise
+    // generate. The canvas is pointer-events:none so the DOM target under a
+    // tile is whatever sits beneath it — without this, grabbing a tile that
+    // overlaps a draggable heading fires that heading's mousedown, dragging
+    // the text and popping its selection box. pointerdown runs before
+    // mousedown, so cancelling here stops it before anything else sees it.
+    e.nativeEvent.preventDefault()
     ;(e.target as Element).setPointerCapture?.(e.pointerId)
     dragging.current = true
     last.current = { x: e.clientX, y: e.clientY }
@@ -193,9 +201,11 @@ function IconTile({
     const dx = (e.clientX - last.current.x) * 0.01
     const dy = (e.clientY - last.current.y) * 0.01
     last.current = { x: e.clientX, y: e.clientY }
+    // The tile tracks the pointer 1:1 while held; only the throw is amplified,
+    // so dragging still feels precise but letting go actually flings it.
     mesh.current.rotation.y += dx
     mesh.current.rotation.x += dy
-    vel.current = { x: dx, y: dy }
+    vel.current = { x: dx * THROW, y: dy * THROW }
   }
 
   const onUp = (e: ThreeEvent<PointerEvent>) => {
