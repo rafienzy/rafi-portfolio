@@ -6,6 +6,7 @@
 export type Tile = {
   src: string   // SVG — used by the flat DOM tiles, crisp at any size
   tex: string   // PNG — used as the WebGL texture; see note below
+  side: string  // extruded edge colour, taken from each icon's own backplate
   label: string
   left: number
   top: number
@@ -25,11 +26,13 @@ export const DESIGN_H = 1024
 // be a material compiled before its texture existed, fixed in Icons3D. PNG is
 // kept simply because it needs no rasterising inside the engine, which is one
 // less thing to vary across browsers.
+// `side` is each icon's own backplate colour, read straight out of its SVG, so
+// the extruded edge reads as part of the tile rather than a white rim around it.
 export const TILES: Tile[] = [
-  { src: '/icon-figma.svg', tex: '/icon-figma.png', label: 'Figma',         left: 184,     top: 405,    box: 134.122, size: 106,     radius: 8,  rot: -18.47 },
-  { src: '/icon-ps.svg',    tex: '/icon-ps.png',    label: 'Photoshop',     left: 1057.21, top: 492.21, box: 129.7,   size: 106,     radius: 8,  rot: 14.91 },
-  { src: '/icon-ai.svg',    tex: '/icon-ai.png',    label: 'Illustrator',   left: 1121,    top: 635,    box: 168.042, size: 136.261, radius: 8,  rot: -15.7 },
-  { src: '/icon-ae.svg',    tex: '/icon-ae.png',    label: 'After Effects', left: 131.88,  top: 695.88, box: 195.849, size: 162.504, radius: 13, rot: 13.45 },
+  { src: '/icon-figma.svg', tex: '/icon-figma.png', side: '#171717', label: 'Figma',         left: 184,     top: 405,    box: 134.122, size: 106,     radius: 8,  rot: -18.47 },
+  { src: '/icon-ps.svg',    tex: '/icon-ps.png',    side: '#001E36', label: 'Photoshop',     left: 1057.21, top: 492.21, box: 129.7,   size: 106,     radius: 8,  rot: 14.91 },
+  { src: '/icon-ai.svg',    tex: '/icon-ai.png',    side: '#330000', label: 'Illustrator',   left: 1121,    top: 635,    box: 168.042, size: 136.261, radius: 8,  rot: -15.7 },
+  { src: '/icon-ae.svg',    tex: '/icon-ae.png',    side: '#00005B', label: 'After Effects', left: 131.88,  top: 695.88, box: 195.849, size: 162.504, radius: 13, rot: 13.45 },
 ]
 
 export const pctW = (px: number) => `${(px / DESIGN_W) * 100}%`

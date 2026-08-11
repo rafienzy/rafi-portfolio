@@ -196,7 +196,7 @@ function IconTile({ tile, interactive }: { tile: Tile; interactive: boolean }) {
     >
       {/* Group 0 = the two flat caps, group 1 = extruded sides and bevel */}
       <meshStandardMaterial attach="material-0" map={tex} roughness={0.35} metalness={0.05} color="#ffffff" />
-      <meshStandardMaterial attach="material-1" color="#c9c9c9" roughness={0.5} metalness={0.05} />
+      <meshStandardMaterial attach="material-1" color={tile.side} roughness={0.5} metalness={0.05} />
     </mesh>
   )
 }
@@ -211,28 +211,24 @@ function IconTile({ tile, interactive }: { tile: Tile; interactive: boolean }) {
 // resize path does, so one synthetic resize on the frame after mount is what
 // actually shakes it loose. Ugly, but it is a single one-shot event against a
 // known upstream race, and it leaves real resizes handled normally.
-function useCanvasSizeKick(ready: boolean, host: React.RefObject<HTMLDivElement | null>) {
+function useCanvasSizeKick(ready: boolean) {
   useEffect(() => {
     if (!ready) return
 
-    let tries = 0
-    const id = setInterval(() => {
-      const el = host.current
-      const canvas = el?.querySelector('canvas')
-      // Backing store is in device pixels, so matching or exceeding the host's
-      // CSS width means R3F has taken the real size and we can stop.
-      if (!el || (canvas && canvas.width >= el.offsetWidth)) {
-        clearInterval(id)
-        return
-      }
-      window.dispatchEvent(new Event('resize'))
-      // A single kick lands too early — R3F has not attached its listener on
-      // the first frame after mount. Give up after ~1s rather than loop.
-      if (++tries > 10) clearInterval(id)
-    }, 100)
+    // Fires unconditionally. An earlier version skipped the kick once the
+    // canvas backing store looked right, which was wrong: the canvas can carry
+    // correct dimensions while R3F's own state is still stale, leaving a
+    // properly sized canvas that renders nothing at all. The only reliable
+    // signal is a resize, so send a few and stop.
+    //
+    // Spread out because a single kick on the frame after mount lands before
+    // R3F has attached its listener.
+    const ids = [50, 250, 600].map(ms =>
+      setTimeout(() => window.dispatchEvent(new Event('resize')), ms),
+    )
 
-    return () => clearInterval(id)
-  }, [ready, host])
+    return () => ids.forEach(clearTimeout)
+  }, [ready])
 }
 
 // Design space is 1440 wide; the canvas is whatever the stage is. Scaling the
@@ -279,7 +275,7 @@ export default function Icons3D({ interactive = false }: { interactive?: boolean
     return () => ro.disconnect()
   }, [])
 
-  useCanvasSizeKick(ready, host)
+  useCanvasSizeKick(ready)
 
   return (
     <div
