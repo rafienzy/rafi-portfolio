@@ -82,6 +82,10 @@ function IconTile({
   const dragging = useRef(false)
   const last     = useRef({ x: 0, y: 0 })
   const phase    = useMemo(() => Math.random() * Math.PI * 2, [])
+  // Tilt the sway oscillates around. Cleared whenever the user takes hold, and
+  // re-captured on release so the resting motion picks up from wherever they
+  // left the tile instead of snapping back.
+  const swayBase = useRef<number | null>(null)
   const [hovered, setHovered] = useState(false)
 
   const sizePx = Math.round(tile.size * scale)
@@ -135,22 +139,33 @@ function IconTile({
     if (!m) return
     const t = state.clock.elapsedTime
 
+    const swayAt = Math.sin(t * SWAY_SPEED + phase) * SWAY
+
     if (dragging.current) {
       // The pointer owns the rotation outright while held
+      swayBase.current = null
     } else if (Math.abs(vel.current.x) > 0.0004 || Math.abs(vel.current.y) > 0.0004) {
-      // Coast on the throw, decaying back toward the resting motion
+      // Coast on the throw
       m.rotation.y += vel.current.x
       m.rotation.x += vel.current.y
       vel.current.x *= FRICTION
       vel.current.y *= FRICTION
+      swayBase.current = null
     } else {
-      // Resting: a slow continuous turn with a sway across it. Tracked against
-      // elapsed time rather than accumulated, so a throw can't leave a tile
-      // permanently out of phase with its neighbours.
+      // Resting: a slow continuous turn with a sway across it. Both are
+      // relative to where the tile already is, never assigned from elapsed
+      // time — otherwise letting go would snap it back to whatever angle the
+      // clock happened to be at, throwing away the user's rotation.
       vel.current.x = 0
       vel.current.y = 0
-      m.rotation.y = t * SPIN + phase
-      m.rotation.x = Math.sin(t * SWAY_SPEED + phase) * SWAY
+
+      // Subtracting the sway's current value gives a base that leaves
+      // rotation.x exactly where it is this frame, so resuming is seamless
+      // rather than jumping by the sway offset.
+      if (swayBase.current === null) swayBase.current = m.rotation.x - swayAt
+
+      m.rotation.y += SPIN * delta
+      m.rotation.x = swayBase.current + swayAt
     }
 
     m.rotation.z = restZ
@@ -188,6 +203,10 @@ function IconTile({
     dragging.current = false
   }
 
+  // Y starts at `phase` so the tiles aren't all facing the same way. The old
+  // formula folded that offset in every frame; now that rotation accumulates,
+  // it has to be the starting value instead.
+  //
   // Look-only mode attaches no handlers at all, so R3F skips raycasting these
   // meshes rather than raycasting and discarding the result.
   const handlers = interactive
@@ -202,7 +221,13 @@ function IconTile({
     : {}
 
   return (
-    <mesh ref={mesh} geometry={geometry} position={[cx, cy, 0]} {...handlers}>
+    <mesh
+      ref={mesh}
+      geometry={geometry}
+      position={[cx, cy, 0]}
+      rotation={[0, phase, restZ]}
+      {...handlers}
+    >
       {/* Group 0 = the two flat caps, group 1 = extruded sides and bevel */}
       <meshStandardMaterial attach="material-0" map={tex} roughness={0.35} metalness={0.05} color="#ffffff" />
       <meshStandardMaterial attach="material-1" color={tile.side} roughness={0.5} metalness={0.05} />
