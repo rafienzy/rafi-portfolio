@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useMemo, useState, useEffect } from 'react'
-import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
+import { useRef, useMemo, useState, useEffect, Suspense } from 'react'
+import { Canvas, useFrame, useThree, useLoader, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { TILES, DESIGN_W, DESIGN_H, type Tile } from './tiles'
 import FlatTiles from './FlatTiles'
@@ -39,44 +39,29 @@ function roundedSquare(size: number, radius: number) {
   return s
 }
 
-// Load the SVG straight into a texture. An earlier version rasterised it into
-// a <canvas> first for sharpness, but that made the upload a canvas read —
-// which Brave's fingerprinting protection interferes with, so every tile came
-// out blank and fell back to its flat colour. Handing WebGL the image element
-// avoids the canvas entirely.
+// Loaded through useLoader, which suspends until the image is ready, so the
+// material is built with its map already in place.
+//
+// This matters more than it looks. Loading into state and passing the texture
+// in afterwards leaves the material compiled without a map — three bakes that
+// into the shader program, and simply assigning `map` later does not trigger a
+// recompile, so every tile renders flat white forever. Two earlier attempts
+// (rasterising the SVG through a canvas, then loading it directly) chased that
+// as an image-format problem when the format was never the issue.
 function useIconTexture(src: string) {
-  const [tex, setTex] = useState<THREE.Texture | null>(null)
+  const tex = useLoader(THREE.TextureLoader, src)
 
-  useEffect(() => {
-    let cancelled = false
-    let made: THREE.Texture | null = null
-
-    const loader = new THREE.TextureLoader()
-    loader.load(
-      src,
-      t => {
-        if (cancelled) { t.dispose(); return }
-        t.colorSpace = THREE.SRGBColorSpace
-        t.anisotropy = 8
-        made = t
-        setTex(t)
-      },
-      undefined,
-      () => { /* leave tex null — the flat colour fallback stands in */ },
-    )
-
-    return () => {
-      cancelled = true
-      made?.dispose()
-    }
-  }, [src])
-
-  return tex
+  return useMemo(() => {
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.anisotropy = 8
+    tex.needsUpdate = true
+    return tex
+  }, [tex])
 }
 
 function IconTile({ tile, interactive }: { tile: Tile; interactive: boolean }) {
   const mesh = useRef<THREE.Mesh>(null)
-  const tex  = useIconTexture(tile.src)
+  const tex  = useIconTexture(tile.tex)
 
   // Spin state. Kept in refs so dragging never triggers a React render.
   const vel      = useRef({ x: 0, y: 0 })
@@ -210,7 +195,7 @@ function IconTile({ tile, interactive }: { tile: Tile; interactive: boolean }) {
       {...handlers}
     >
       {/* Group 0 = the two flat caps, group 1 = extruded sides and bevel */}
-      <meshStandardMaterial attach="material-0" map={tex ?? undefined} roughness={0.35} metalness={0.05} color={tex ? '#ffffff' : '#d9d9d9'} />
+      <meshStandardMaterial attach="material-0" map={tex} roughness={0.35} metalness={0.05} color="#ffffff" />
       <meshStandardMaterial attach="material-1" color="#c9c9c9" roughness={0.5} metalness={0.05} />
     </mesh>
   )
@@ -261,9 +246,13 @@ function Scene({ interactive }: { interactive: boolean }) {
       <ambientLight intensity={1.1} />
       <directionalLight position={[-300, 400, 600]} intensity={2.2} />
       <directionalLight position={[400, -200, 300]} intensity={0.8} color="#9effc0" />
-      {TILES.map(t => (
-        <IconTile key={t.label} tile={t} interactive={interactive} />
-      ))}
+      {/* Each tile suspends on its texture; null fallback because the flat DOM
+          tiles are already covering this moment underneath. */}
+      <Suspense fallback={null}>
+        {TILES.map(t => (
+          <IconTile key={t.label} tile={t} interactive={interactive} />
+        ))}
+      </Suspense>
     </group>
   )
 }
