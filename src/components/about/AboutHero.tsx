@@ -3,12 +3,12 @@
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import FlatTiles from './FlatTiles'
-import { DESIGN_W as W, DESIGN_H as H, pctW, pctH, cqw } from './tiles'
+import { DESIGN_W as W, DESIGN_H as H, TILES_3D, pctW, pctH, cqw } from './tiles'
 
 // three.js is ~150KB gzipped and only needed for the tiles, so it loads on the
 // client after paint. Until it arrives the flat SVG tiles hold the exact same
 // positions, so nothing shifts when the 3D version takes over.
-const Icons3D = dynamic(() => import('./Icons3D'), {
+const Icons3D = dynamic(() => import('@/components/three/Icons3D'), {
   ssr: false,
   loading: () => <FlatTiles />,
 })
@@ -77,8 +77,8 @@ export default function AboutHero() {
         GRAPHIC<br />DESIGNER
       </div>
 
-      {/* ── Tool tiles ── */}
-      <Icons3D />
+      {/* ── Tool tiles — look-only here; the landing hero is the interactive one ── */}
+      <Icons3D tiles={TILES_3D} designW={W} fallback={<FlatTiles />} />
 
       {/* ── Cutout, in front of the stadium and tiles ── */}
       <div

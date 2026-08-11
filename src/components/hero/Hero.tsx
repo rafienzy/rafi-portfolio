@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import { selectionStore } from '@/lib/selection-store'
 import { transformStore, correctionBus, CorrectionReason } from '@/lib/transform-store'
 import { navigateWithTransition } from '@/lib/page-transition'
-import FloatingIcons from './FloatingIcons'
+import HeroIcons3D from './HeroIcons3D'
 import { HandRaisedIcon } from '@heroicons/react/24/solid'
 
 type Msg = { msg: string; emoji: string }
@@ -695,7 +695,7 @@ export default function Hero() {
     <>
       <section ref={heroRef} className="relative h-screen w-full z-10 overflow-hidden select-none">
 
-        <FloatingIcons />
+        <HeroIcons3D sectionRef={heroRef} />
 
         <div id="el-eyebrow" className="draggable" style={{
           position: 'absolute', left: '50%', top: 'calc(50% - 148px)',
