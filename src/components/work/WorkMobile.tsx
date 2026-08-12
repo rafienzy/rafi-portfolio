@@ -7,10 +7,6 @@ export default function WorkMobile() {
   return (
     <div style={{ position: 'relative', zIndex: 10, paddingTop: 100, paddingBottom: 60, paddingLeft: 24, paddingRight: 24 }}>
       <div style={{ marginBottom: 48 }}>
-        <p style={{
-          fontSize: 11, fontWeight: 700, letterSpacing: '5px',
-          color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 12,
-        }}>Selected Work</p>
         <h1 style={{
           fontSize: 'clamp(40px, 10vw, 64px)', fontWeight: 800,
           letterSpacing: '-0.04em', color: '#fff', lineHeight: 1,

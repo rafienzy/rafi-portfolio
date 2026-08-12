@@ -2,6 +2,7 @@
 
 import Nav from '@/components/layout/Nav'
 import AboutHero from '@/components/about/AboutHero'
+import AboutSections from '@/components/about/AboutSections'
 
 export default function About() {
   return (
@@ -16,6 +17,7 @@ export default function About() {
 
       <Nav />
       <AboutHero />
+      <AboutSections />
     </main>
   )
 }
