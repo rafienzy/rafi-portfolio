@@ -5,12 +5,17 @@ import Image from 'next/image'
 import { PROJECTS, Project, Media } from '@/lib/work-data'
 import { navigateWithTransition } from '@/lib/page-transition'
 import { isAnimated, isVideo, toMedia } from '@/lib/media'
-import WorkMobile from './WorkMobile'
 
 // Horizontal strip metrics — single source of truth so the scroll padding and
-// the trailing spacer can never drift apart
-const H_PAD      = 'max(48px, 11vw)'
-const CARD_W     = 'clamp(420px, 42vw, 660px)'
+// the trailing spacer can never drift apart.
+//
+// One strip on both breakpoints. Mobile only changes the measurements: the
+// gutter matches the mobile nav, and cards are sized so the next one peeks in
+// at the edge, which is what tells you the row scrolls at all.
+const H_PAD_D    = 'max(48px, 11vw)'
+const H_PAD_M    = '24px'
+const CARD_W_D   = 'clamp(420px, 42vw, 660px)'
+const CARD_W_M   = 'min(78vw, 340px)'
 const CARD_RATIO = 16 / 10   // >1 = landscape (width / height)
 const GAP        = 24
 
@@ -251,22 +256,31 @@ export default function WorkList() {
     }
   }, [isMobile, setThumb, reArmHover])
 
-  if (isMobile) return <WorkMobile />
-
   // ── Horizontal strip ───────────────────────────────────────────────────
+  const H_PAD  = isMobile ? H_PAD_M  : H_PAD_D
+  const CARD_W = isMobile ? CARD_W_M : CARD_W_D
+
   return (
     <>
     <div style={{
       position: 'relative', zIndex: 10,
-      height: '100vh',
+      // dvh on mobile: vh there is the tallest the viewport ever gets, so the
+      // strip would sit partly under the browser chrome until you scroll.
+      height: isMobile ? '100dvh' : '100vh',
       display: 'flex', flexDirection: 'column', justifyContent: 'center',
-      // Clear the fixed nav
-      paddingTop: 120,
+      // Clear the fixed nav — the mobile one is shorter
+      paddingTop: isMobile ? 96 : 120,
     }}>
 
-      {/* ── Header ── */}
+      {/* ── Header ──
+          Side by side on desktop. On mobile the title wraps to two lines and
+          squeezes the count into a cramped column beside it, so they stack. */}
       <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        justifyContent: 'space-between',
+        alignItems: isMobile ? 'flex-start' : 'flex-end',
+        gap: isMobile ? 10 : 0,
         marginBottom: 20, paddingLeft: H_PAD, paddingRight: H_PAD,
         flexShrink: 0,
       }}>
@@ -303,10 +317,15 @@ export default function WorkList() {
           gap: GAP,
           overflowX: 'auto',
           overflowY: 'hidden',
-          // No scrollSnapType — settling is done manually in the wheel effect
+          // Desktop settles manually in the wheel effect, so CSS snap would
+          // fight it — see the comment there. Touch never goes through that
+          // handler, so mobile gets native snap and momentum for free.
+          scrollSnapType: isMobile ? 'x mandatory' : undefined,
+          scrollPaddingLeft: isMobile ? H_PAD : undefined,
+          WebkitOverflowScrolling: 'touch',
           paddingLeft: H_PAD,
-          paddingTop: 40,
-          paddingBottom: 40,
+          paddingTop: isMobile ? 24 : 40,
+          paddingBottom: isMobile ? 24 : 40,
           flexShrink: 0,
           // Stop horizontal overscroll from triggering browser back-navigation
           overscrollBehaviorX: 'contain',
@@ -317,6 +336,8 @@ export default function WorkList() {
             key={project.id}
             project={project}
             index={i}
+            width={CARD_W}
+            snap={isMobile}
             onEnter={handleCardEnter}
             onLeave={handleCardLeave}
           />
@@ -328,7 +349,9 @@ export default function WorkList() {
       </div>
     </div>
 
-    {/* ── Cursor thumbnail ── */}
+    {/* ── Cursor thumbnail — desktop only; there is no cursor to follow on
+        touch, and it would just be an invisible element chasing nothing ── */}
+    {!isMobile && (
     <div
       ref={thumbRef}
       aria-hidden
@@ -412,12 +435,15 @@ export default function WorkList() {
         </div>
       )}
     </div>
+    )}
     </>
   )
 }
 
 // ── Card ─────────────────────────────────────────────────────────────────
-function ProjectCardH({ project, index, onEnter, onLeave }: {
+function ProjectCardH({ project, index, width, snap, onEnter, onLeave }: {
+  width: string
+  snap: boolean
   project: Project
   index: number
   onEnter: (p: Project) => void
@@ -442,7 +468,8 @@ function ProjectCardH({ project, index, onEnter, onLeave }: {
       onMouseLeave={() => { setHovered(false); onLeave() }}
       style={{
         flex: '0 0 auto',
-        width: CARD_W,
+        width,
+        scrollSnapAlign: snap ? 'start' : undefined,
         cursor: 'pointer',
         // Lift the hovered card above its neighbours so the growth overlaps
         // them cleanly instead of being clipped behind the next one
