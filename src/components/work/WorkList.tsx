@@ -16,8 +16,16 @@ const H_PAD_D    = 'max(48px, 11vw)'
 const H_PAD_M    = '24px'
 const CARD_W_D   = 'clamp(420px, 42vw, 660px)'
 const CARD_W_M   = 'min(78vw, 340px)'
-const CARD_RATIO = 16 / 10   // >1 = landscape (width / height)
+const CARD_RATIO = 16 / 10   // >1 = landscape (width / height) — desktop only
 const GAP        = 24
+
+// Mobile cards fill the height instead of holding a ratio, so these two decide
+// how much room they get. Both are measured, not guessed: the nav runs to ~76px
+// at the top, and the bottom nav pill's top edge sits ~126px above the viewport
+// bottom. Each value adds breathing room on top of that — without it the card
+// butts straight against the bar.
+const M_TOP    = 120
+const M_BOTTOM = 142
 
 // Scroll position is driven manually (see the wheel effect) rather than by CSS
 // scroll-snap, so mouse wheels and trackpads behave identically.
@@ -269,7 +277,10 @@ export default function WorkList() {
       height: isMobile ? '100dvh' : '100vh',
       display: 'flex', flexDirection: 'column', justifyContent: 'center',
       // Clear the fixed nav — the mobile one is shorter
-      paddingTop: isMobile ? 96 : 120,
+      paddingTop: isMobile ? M_TOP : 120,
+      // Only mobile needs this: the card stretches into whatever is left, so
+      // without it the strip would run under the bottom nav pill.
+      paddingBottom: isMobile ? M_BOTTOM : 0,
     }}>
 
       {/* ── Header ──
@@ -324,9 +335,12 @@ export default function WorkList() {
           scrollPaddingLeft: isMobile ? H_PAD : undefined,
           WebkitOverflowScrolling: 'touch',
           paddingLeft: H_PAD,
-          paddingTop: isMobile ? 24 : 40,
-          paddingBottom: isMobile ? 24 : 40,
-          flexShrink: 0,
+          paddingTop: isMobile ? 14 : 40,
+          paddingBottom: isMobile ? 14 : 40,
+          // Desktop keeps its natural height. Mobile takes everything the
+          // header leaves, which is what the cards then stretch into.
+          flex: isMobile ? '1 1 auto' : '0 0 auto',
+          minHeight: 0,
           // Stop horizontal overscroll from triggering browser back-navigation
           overscrollBehaviorX: 'contain',
         }}
@@ -338,6 +352,7 @@ export default function WorkList() {
             index={i}
             width={CARD_W}
             snap={isMobile}
+            fill={isMobile}
             onEnter={handleCardEnter}
             onLeave={handleCardLeave}
           />
@@ -441,9 +456,12 @@ export default function WorkList() {
 }
 
 // ── Card ─────────────────────────────────────────────────────────────────
-function ProjectCardH({ project, index, width, snap, onEnter, onLeave }: {
+function ProjectCardH({ project, index, width, snap, fill, onEnter, onLeave }: {
   width: string
   snap: boolean
+  // Stretch to the strip's height rather than holding CARD_RATIO. Mobile uses
+  // this so a card fills the screen between the two fixed bars.
+  fill: boolean
   project: Project
   index: number
   onEnter: (p: Project) => void
@@ -469,6 +487,9 @@ function ProjectCardH({ project, index, width, snap, onEnter, onLeave }: {
       style={{
         flex: '0 0 auto',
         width,
+        height: fill ? '100%' : undefined,
+        display: fill ? 'flex' : undefined,
+        flexDirection: fill ? 'column' : undefined,
         scrollSnapAlign: snap ? 'start' : undefined,
         cursor: 'pointer',
         // Lift the hovered card above its neighbours so the growth overlaps
@@ -484,7 +505,11 @@ function ProjectCardH({ project, index, width, snap, onEnter, onLeave }: {
       <div style={{
         position: 'relative',
         width: '100%',
-        aspectRatio: String(CARD_RATIO),
+        // Ratio on desktop; on mobile it takes whatever the caption leaves,
+        // so the card ends up portrait and fills the screen.
+        aspectRatio: fill ? undefined : String(CARD_RATIO),
+        flex: fill ? '1 1 auto' : undefined,
+        minHeight: 0,
         borderRadius: 10,
         overflow: 'hidden',
         background: 'rgba(255,255,255,0.03)',
@@ -529,7 +554,7 @@ function ProjectCardH({ project, index, width, snap, onEnter, onLeave }: {
       </div>
 
       {/* Caption */}
-      <div style={{ paddingTop: 16 }}>
+      <div style={{ paddingTop: 16, flexShrink: 0 }}>
         <div style={{
           display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12,
         }}>
