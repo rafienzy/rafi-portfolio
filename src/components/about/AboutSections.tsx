@@ -1,6 +1,7 @@
 'use client'
 
-import { BIO, SKILLS, ROLES } from '@/lib/about-data'
+import Image from 'next/image'
+import { BIO, SKILLS, ROLES, type Skill } from '@/lib/about-data'
 
 // Sections below the about hero. Gutters match the nav (50px desktop / 24px
 // mobile) so everything lines up with the logo and Let's Talk button, the same
@@ -9,6 +10,58 @@ import { BIO, SKILLS, ROLES } from '@/lib/about-data'
 // No eyebrow labels: headings carry their own sections.
 
 const MAXW = 1440
+const ICON = 22
+
+// One chip shape for everything, so a tool with a logo and one without still
+// sit on the same line without looking like two different components.
+//
+// The two icon sources don't match visually: the Adobe/Figma files are app
+// tiles with their own coloured background, while the Simple Icons ones are
+// bare glyphs on transparency. Giving the glyphs a backing plate at the same
+// size lets both read as the same object.
+function SkillChip({ skill }: { skill: Skill }) {
+  const { name, icon, glyph } = skill
+
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 8,
+      background: 'rgba(255,255,255,0.06)',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 100,
+      padding: icon ? '5px 14px 5px 5px' : '7px 14px',
+      whiteSpace: 'nowrap',
+    }}>
+      {icon && (
+        <span style={{
+          width: ICON, height: ICON,
+          borderRadius: glyph ? 6 : 5,
+          overflow: 'hidden',
+          flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: glyph ? 'rgba(255,255,255,0.08)' : 'transparent',
+        }}>
+          <Image
+            src={icon}
+            alt=""
+            width={ICON}
+            height={ICON}
+            style={{
+              width: glyph ? ICON * 0.68 : ICON,
+              height: glyph ? ICON * 0.68 : ICON,
+              display: 'block',
+            }}
+          />
+        </span>
+      )}
+      <span style={{
+        fontSize: 12, fontWeight: 600, letterSpacing: '0.01em',
+        color: 'rgba(255,255,255,0.85)',
+      }}>
+        {name}
+      </span>
+    </span>
+  )
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -73,15 +126,7 @@ export default function AboutSections() {
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {items.map(item => (
-                  <span key={item} style={{
-                    fontSize: 11, fontWeight: 600, letterSpacing: '0.5px',
-                    color: '#0B3D1E',
-                    background: '#5CFF85',
-                    padding: '4px 12px', borderRadius: 100,
-                    textTransform: 'uppercase', whiteSpace: 'nowrap',
-                  }}>
-                    {item}
-                  </span>
+                  <SkillChip key={item.name} skill={item} />
                 ))}
               </div>
             </div>
