@@ -320,6 +320,7 @@ export default function Icons3D({
 }) {
   const host = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
+  const [onScreen, setOnScreen] = useState(true)
 
   // Mount the Canvas only once the host measures non-zero, so R3F is not
   // sizing against a container that has not been laid out yet.
@@ -333,6 +334,19 @@ export default function Icons3D({
     const ro = new ResizeObserver(check)
     ro.observe(el)
     return () => ro.disconnect()
+  }, [])
+
+  // Drives frameloop. A generous rootMargin means the tiles are already
+  // running by the time they scroll into view, rather than visibly starting.
+  useEffect(() => {
+    const el = host.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => setOnScreen(entry.isIntersecting),
+      { rootMargin: '200px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
   }, [])
 
   useCanvasSizeKick(ready)
@@ -357,7 +371,17 @@ export default function Icons3D({
           camera={{ position: [0, 0, 1000], near: 0.1, far: 4000, zoom: 1 }}
           gl={{ antialias: true, alpha: true }}
           dpr={[1, 2]}
-          resize={{ offsetSize: true, debounce: 0 }}
+          // Note the absent `debounce: 0`. R3F re-measures its container on
+          // scroll, and its default 50ms scroll debounce is what keeps that
+          // cheap. Forcing debounce to 0 made every scroll event trigger a
+          // synchronous getBoundingClientRect — layout thrash on every frame
+          // of every scroll, which is what made this page feel jittery. It was
+          // added while chasing the sizing bug and never actually helped.
+          resize={{ offsetSize: true }}
+          // Stop rendering entirely when the canvas is off-screen. Otherwise a
+          // 2530×1800 antialiased buffer keeps redrawing at 60fps the whole
+          // time you're reading the sections below it.
+          frameloop={onScreen ? 'always' : 'never'}
           {...(eventSource?.current ? { eventSource: eventSource.current } : {})}
           style={{
             background: 'transparent',
