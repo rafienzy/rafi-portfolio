@@ -516,7 +516,7 @@ function ProjectCardH({ project, index, width, snap, fill, onEnter, onLeave }: {
         border: '1px solid rgba(255,255,255,0.08)',
       }}>
         {project.thumbnail ? (
-          <CardMedia item={project.thumbnail} alt={project.title} hovered={hovered} />
+          <CardMedia item={project.thumbnail} alt={project.title} hovered={hovered} inViewPlay={fill} />
         ) : (
           /* Placeholder — stands in until real thumbnails land in work-data.ts.
              Scales with the same curve as a real image so the hover feel
@@ -594,7 +594,14 @@ function ProjectCardH({ project, index, width, snap, fill, onEnter, onLeave }: {
 }
 
 // ── Card media — image, gif or video ─────────────────────────────────────
-function CardMedia({ item, alt, hovered }: { item: Media; alt: string; hovered: boolean }) {
+function CardMedia({ item, alt, hovered, inViewPlay }: {
+  item: Media
+  alt: string
+  hovered: boolean
+  // Touch has no hover, so the card you've scrolled to plays instead. Without
+  // this a video thumbnail would sit frozen on its poster forever on a phone.
+  inViewPlay: boolean
+}) {
   const { src, poster } = toMedia(item)
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -602,6 +609,7 @@ function CardMedia({ item, alt, hovered }: { item: Media; alt: string; hovered: 
   // every card at once, and four looping clips decoding in parallel costs far
   // more than it earns when only one is being looked at.
   useEffect(() => {
+    if (inViewPlay) return
     const v = videoRef.current
     if (!v) return
     if (hovered) {
@@ -610,7 +618,26 @@ function CardMedia({ item, alt, hovered }: { item: Media; alt: string; hovered: 
       v.pause()
       v.currentTime = 0
     }
-  }, [hovered])
+  }, [hovered, inViewPlay])
+
+  // Touch equivalent: whichever card is substantially on screen plays, the
+  // rest stay paused, so it is still one clip decoding at a time.
+  useEffect(() => {
+    if (!inViewPlay) return
+    const v = videoRef.current
+    if (!v) return
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.intersectionRatio > 0.6) v.play().catch(() => {})
+        else v.pause()
+      },
+      { threshold: [0, 0.6, 1] },
+    )
+
+    io.observe(v)
+    return () => io.disconnect()
+  }, [inViewPlay])
 
   const zoom = {
     transform: hovered ? `scale(${HOVER_SCALE})` : 'scale(1)',
